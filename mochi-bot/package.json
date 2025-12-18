@@ -1,0 +1,14 @@
+{
+  "name": "mochi-bot",
+  "version": "1.0.0",
+  "description": "A cute Discord chatbot with chaotic energy",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.24.0",
+    "discord.js": "^14.14.1",
+    "dotenv": "^16.3.1"
+  }
+}
