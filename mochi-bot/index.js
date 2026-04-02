@@ -109,22 +109,25 @@ discord.on('messageCreate', async (message) => {
         await message.reply("hmm? did you want something? :3");
         return;
     }
-    
-    // Show typing indicator
-    await message.channel.sendTyping();
-    
+
+    message.channel.sendTyping(); // fires immediately
+    const typingInterval = setInterval(() => {
+        message.channel.sendTyping();
+    }, 9000); // then every 9 seconds after
+
     try {
-        // Clean up the message and generate response
         const userMessage = cleanMessage(message);
         const response = await generateResponse(message.channel.id, userMessage);
         
-        // Send the response
+        clearInterval(typingInterval);
+        
         await message.reply({
             content: response,
             allowedMentions: { repliedUser: true }
         });
         
     } catch (error) {
+        clearInterval(typingInterval);
         console.error('Error handling message:', error);
         await message.reply("something went weird... :c");
     }
