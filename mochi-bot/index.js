@@ -1,6 +1,6 @@
 require('dotenv').config();
 const { Client, GatewayIntentBits, Partials } = require('discord.js');
-const { SYSTEM_PROMPT } = require('./personality');
+const { SYSTEM_PROMPT, EXAMPLES } = require('./personality');
 
 const discord = new Client({
     intents: [
@@ -47,29 +47,45 @@ function cleanMessage(message) {
     return `${username} says: ${content}`;
 }
 
+// If she writes out a transcript, keep only her own part
+function cleanReply(text) {
+    const parts = text.split(/^\s*mochii?\s*(?:says)?\s*:\s*/im);
+    let reply = parts[parts.length - 1];
+    reply = reply.split(/\n[^\n]{1,40}? says:/i)[0]; // stop if she starts writing someone else's line
+    return reply.trim();
+}
 // Generate a response from Mochi
 async function generateResponse(channelId, userMessage) {
     const history = getHistory(channelId);
 
     const messages = [
         { role: 'system', content: SYSTEM_PROMPT },
+        ...EXAMPLES,
         ...history,
         { role: 'user', content: userMessage }
     ];
+    console.log(JSON.stringify(messages, null, 2));
 
     try {
-        const response = await fetch('http://localhost:11434/v1/chat/completions', {
+        const response = await fetch('http://127.0.0.1:11434/api/chat', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                model: 'llama3.2:3b',
-                max_tokens: 100,
+                model: 'qwen3:14b',
+                stream: false,
+                think: false,
                 messages: messages,
-            })
+                options: { num_predict: 150, temperature: 0.9, repeat_penalty: 1.1 },
+            }),
+            signal: AbortSignal.timeout(60_000),
         });
 
+        if (!response.ok) {
+            throw new Error(`ollama ${response.status}: ${await response.text()}`);
+        }
+
         const data = await response.json();
-        const assistantMessage = data.choices[0].message.content;
+        const assistantMessage = cleanReply(data.message.content);
 
         addToHistory(channelId, 'user', userMessage);
         addToHistory(channelId, 'assistant', assistantMessage);
